@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../api';
 import Dropdown from '../components/Dropdown';
 import DatePicker from '../components/DatePicker';
 import { useToast } from '../components/Toast';
@@ -24,6 +24,7 @@ const inp  = { background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,2
 const Dashboard = () => {
   const { showToast } = useToast();
   const [apps, setApps] = useState([]);
+  const [upcoming, setUpcoming] = useState([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('');
@@ -32,8 +33,12 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchApps = async () => {
       try {
-        const res = await axios.get('/api/applications');
-        setApps(res.data);
+        const [appsRes, upcomingRes] = await Promise.all([
+          axios.get('/api/applications'),
+          axios.get('/api/applications/upcoming'),
+        ]);
+        setApps(appsRes.data);
+        setUpcoming(upcomingRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -181,6 +186,35 @@ const Dashboard = () => {
           </table>
         )}
       </div>
+
+      {/* Upcoming Interviews Widget */}
+      {upcoming.length > 0 && (
+        <div style={{ marginTop:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <p style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#333' }}>Upcoming This Week</p>
+            <Link to="/reminders" style={{ fontSize:11, color:BL, textDecoration:'none', fontWeight:600 }}>See All →</Link>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {upcoming.slice(0,3).map((item, idx) => {
+              const daysLeft = Math.round((new Date(item.date) - new Date()) / 86400000);
+              const urgentColor = daysLeft <= 1 ? '#e05a77' : daysLeft <= 3 ? '#d4a843' : '#555';
+              return (
+                <div key={idx} style={{ ...card, padding:'12px 16px', display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:38, height:38, borderRadius:9, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <span style={{ fontSize:14, fontWeight:800, color: urgentColor, fontFamily:'Poppins,sans-serif', lineHeight:1 }}>{new Date(item.date).getDate()}</span>
+                    <span style={{ fontSize:9, color:'#333', fontWeight:600, textTransform:'uppercase' }}>{new Date(item.date).toLocaleDateString('en-US',{month:'short'})}</span>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontWeight:600, color:'#ccc', fontSize:13, margin:0 }}>{item.roundType}</p>
+                    <p style={{ color:'#444', fontSize:12, margin:0 }}>{item.company} – {item.role}</p>
+                  </div>
+                  <span style={{ fontSize:11, color: urgentColor, fontWeight:700, flexShrink:0 }}>{daysLeft === 0 ? 'Today!' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft}d`}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

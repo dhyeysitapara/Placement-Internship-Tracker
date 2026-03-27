@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../api';
 import Dropdown from '../components/Dropdown';
 import DatePicker from '../components/DatePicker';
 import { useToast } from '../components/Toast';

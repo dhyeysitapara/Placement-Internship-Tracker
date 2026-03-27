@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../api';
 import { useToast } from '../components/Toast';
 
 const B   = '#8B0020';

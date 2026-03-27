@@ -6,8 +6,10 @@ const {
   createApplication,
   updateApplication,
   deleteApplication,
+  getUpcoming,
 } = require('../controllers/applicationController');
 
+router.get('/upcoming', getUpcoming);
 router.get('/', getApplications);
 router.get('/:id', getApplicationById);
 router.post('/', createApplication);
