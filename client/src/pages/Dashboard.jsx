@@ -61,6 +61,40 @@ const Dashboard = () => {
     }
   };
 
+  const exportCSV = () => {
+    if (apps.length === 0) return showToast('No applications to export', 'error');
+    
+    const headers = ['Company', 'Job Role', 'Status', 'Date Applied', 'Interview Rounds', 'Next Interview Date', 'Notes', 'Job Link'];
+    const rows = apps.map(a => {
+      const now = new Date();
+      let nextInterview = '';
+      if (a.interviewRounds && a.interviewRounds.length > 0) {
+        const upc = a.interviewRounds.filter(r => new Date(r.date) >= now).sort((x, y) => new Date(x.date) - new Date(y.date));
+        if (upc.length > 0) nextInterview = new Date(upc[0].date).toLocaleString();
+      }
+
+      const escape = (str) => {
+        if (!str) return '';
+        const s = String(str);
+        return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+
+      return [
+        escape(a.company), escape(a.jobRole), escape(a.status), escape(new Date(a.dateApplied).toLocaleDateString()),
+        escape(a.interviewRounds ? a.interviewRounds.length : 0), escape(nextInterview), escape(a.notes), escape(a.jobLink)
+      ].join(',');
+    });
+
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `PlacementTracker_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Exported to CSV!', 'success');
+  };
+
   const filtered = apps.filter(a => {
     const matchStatus = filter === 'All' || a.status === filter;
     const matchSearch = a.company.toLowerCase().includes(search.toLowerCase());
@@ -87,12 +121,21 @@ const Dashboard = () => {
           <p style={{ fontSize:11, color:'#555', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:5 }}>Overview</p>
           <h1 style={{ fontFamily:'Poppins,sans-serif', fontSize:26, fontWeight:700, color:'#fff' }}>Placement Dashboard</h1>
         </div>
-        <Link to="/add" style={{
-          padding:'9px 22px', borderRadius:8, fontSize:13.5, fontWeight:600,
-          color:'#fff', textDecoration:'none',
-          background:`linear-gradient(135deg,${B},${BL})`,
-          boxShadow:`0 3px 12px rgba(139,0,32,0.4)`,
-        }}>+ Add Application</Link>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button onClick={exportCSV} style={{
+            padding:'9px 18px', borderRadius:8, fontSize:13.5, fontWeight:600, cursor:'pointer',
+            border:`1px solid ${BOR}`, background:'rgba(255,255,255,0.03)', color:'#fff',
+            display:'flex', alignItems:'center', gap:'6px', transition:'all 0.2s'
+          }} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
+            Export CSV
+          </button>
+          <Link to="/add" style={{
+            padding:'9px 22px', borderRadius:8, fontSize:13.5, fontWeight:600,
+            color:'#fff', textDecoration:'none',
+            background:`linear-gradient(135deg,${B},${BL})`,
+            boxShadow:`0 3px 12px rgba(139,0,32,0.4)`,
+          }}>+ Add Application</Link>
+        </div>
       </div>
 
       {/* Stat Cards */}
