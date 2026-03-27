@@ -33,7 +33,7 @@ const ApplicationDetail = () => {
   const step = STEP_NUM[app.status] || 1;
 
   return (
-    <div style={{ padding:'32px 40px', animation:'fadeIn 0.35s ease', maxWidth:840 }}>
+    <div style={{ padding:'32px 40px', animation:'fadeIn 0.35s ease', maxWidth:840, margin:'0 auto' }}>
 
       {/* Actions Row */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
