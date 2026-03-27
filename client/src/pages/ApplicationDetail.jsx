@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useToast } from '../components/Toast';
 
 const B   = '#8B0020';
 const BL  = '#b5002a';
@@ -15,20 +18,51 @@ const SS = {
 const STEPS = ['Applied','Shortlisted','Interview','Offer'];
 const STEP_NUM = { Applied:1, Shortlisted:2, Interview:3, Offer:4, Rejected:4 };
 
-const MOCK = {
-  _id:'1', company:'Microsoft', role:'Frontend Engineer', status:'Interview',
-  dateApplied:'2026-03-20', interviewDate:'2026-03-29',
-  jobLink:'https://careers.microsoft.com',
-  notes:'Recruiter mentioned focus on React hooks and system design. Prepare performance optimization and lazy loading.',
-};
-
 const FMT = d => new Date(d).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'});
 const card = { background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14 };
 
 const ApplicationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const app = MOCK;
+  const { showToast } = useToast();
+  const [app, setApp] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchApp = async () => {
+      try {
+        const res = await axios.get(`/api/applications/${id}`);
+        setApp(res.data);
+      } catch (err) {
+        console.error(err);
+        showToast('Could not fetch application', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApp();
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this application?')) {
+      try {
+        await axios.delete(`/api/applications/${id}`);
+        showToast('Application deleted');
+        navigate('/');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting application', 'error');
+      }
+    }
+  };
+
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'50vh', color:'#888' }}>
+      <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid rgba(139,0,32,0.2)', borderTopColor:B, animation:'spin 0.8s linear infinite' }} />
+    </div>
+  );
+  if (!app) return <div style={{ textAlign:'center', marginTop:100, color:'#888' }}>Application not found.</div>;
+
   const s = SS[app.status] || {};
   const step = STEP_NUM[app.status] || 1;
 
@@ -41,8 +75,8 @@ const ApplicationDetail = () => {
           ← Back
         </button>
         <div style={{ display:'flex', gap:10 }}>
-          <button style={{ padding:'7px 18px', borderRadius:8, fontSize:13, fontWeight:500, background:`rgba(139,0,32,0.15)`, color:'#d06070', border:`1px solid ${BOR}`, cursor:'pointer' }}>Edit</button>
-          <button style={{ padding:'7px 18px', borderRadius:8, fontSize:13, fontWeight:500, background:'rgba(255,255,255,0.03)', color:'#555', border:'1px solid rgba(255,255,255,0.07)', cursor:'pointer' }}>Delete</button>
+          <button onClick={() => navigate(`/edit/${id}`)} style={{ padding:'7px 18px', borderRadius:8, fontSize:13, fontWeight:500, background:`rgba(139,0,32,0.15)`, color:'#d06070', border:`1px solid ${BOR}`, cursor:'pointer' }}>Edit</button>
+          <button onClick={handleDelete} style={{ padding:'7px 18px', borderRadius:8, fontSize:13, fontWeight:500, background:'rgba(255,255,255,0.03)', color:'#555', border:'1px solid rgba(255,255,255,0.07)', cursor:'pointer' }}>Delete</button>
         </div>
       </div>
 
@@ -105,6 +139,34 @@ const ApplicationDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Interview Rounds */}
+      {app.interviewRounds && app.interviewRounds.length > 0 && (
+        <div style={{ ...card, padding:'24px 32px', marginBottom:14 }}>
+          <p style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#333', marginBottom:18 }}>Interview Rounds</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {app.interviewRounds.map((round, idx) => (
+              <div key={idx} style={{ display:'flex', gap:14, position:'relative' }}>
+                {/* Connector line */}
+                {idx < app.interviewRounds.length - 1 && (
+                  <div style={{ position:'absolute', left:12, top:32, bottom:-2, width:2, background:'rgba(255,255,255,0.05)', zIndex:0 }} />
+                )}
+                {/* Badge */}
+                <div style={{ width:26, height:26, borderRadius:'50%', background:`linear-gradient(135deg,${B},${BL})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, position:'relative', zIndex:1, marginTop:2 }}>{idx + 1}</div>
+                {/* Content */}
+                <div style={{ paddingBottom:20, flex:1 }}>
+                  <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom: round.notes ? 4 : 0 }}>
+                    <span style={{ fontSize:14, fontWeight:600, color:'#e0e0e0' }}>{round.roundType}</span>
+                    <span style={{ fontSize:12, color:'#444' }}>–</span>
+                    <span style={{ fontSize:12, color:'#d4a843' }}>{new Date(round.date).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</span>
+                  </div>
+                  {round.notes && <p style={{ fontSize:12.5, color:'#555', lineHeight:1.65, margin:0 }}>{round.notes}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       {app.notes && (

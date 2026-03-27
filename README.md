@@ -83,20 +83,27 @@ Placement-Internship-Tracker/
 ---
 
 ## ✅ Features
-
-**Checkpoint 1 (Architecture & Skeleton)**
-- Base MERN project running
-- All 4 main pages with routing
-- Data model defined
-
-**Checkpoint 2 (Coming — Core CRUD)**
-- Full CRUD operations connected to MongoDB
-- Status update flow
-
-**Checkpoint 3 (Coming — UX & Filters)**
-- Filters by status / company / date
-- Summary analytics cards
-- Validations & error handling
+ 
+ **Checkpoint 1 (Architecture & Skeleton)**
+ - [x] Base MERN project running
+ - [x] All 5 main screens with routing
+ - [x] Clean, scalable project structure
+ - [x] Data model defined and connected
+ 
+ **Checkpoint 2 (Core CRUD)**
+ - [x] Full CRUD operations (Add, View, Edit, Delete)
+ - [x] Real-time MongoDB persistence
+ - [x] Order-preserving status flow
+ 
+ **Checkpoint 3 (UX, Stability & Aesthetics)**
+ - [x] **Premium UI**: Black/Burgundy high-end theme
+ - [x] **Custom DatePicker**: No more native browser popups
+ - [x] **Custom Dropdowns**: Unified selection experience
+ - [x] **Toast Notifications**: Modern feedback system (no alerts)
+ - [x] **Filters**: Real-time filtering by status, company, and date
+ - [x] **Analytics**: Dynamic dashboard summary cards
+ - [x] **Validations**: Robust form checking and inline error feedback
+ - [x] **Edge Cases**: Empty states and graceful error handling
 
 ---
 

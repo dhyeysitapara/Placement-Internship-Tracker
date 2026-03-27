@@ -34,6 +34,22 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    interviewRounds: [
+      {
+        roundType: {
+          type: String,
+          default: 'Technical',
+        },
+        date: {
+          type: Date,
+          required: true,
+        },
+        notes: {
+          type: String,
+          default: '',
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

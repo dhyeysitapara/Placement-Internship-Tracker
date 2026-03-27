@@ -1,18 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import Dropdown from '../components/Dropdown';
+import DatePicker from '../components/DatePicker';
+import { useToast } from '../components/Toast';
 
 const B   = '#8B0020';
 const BL  = '#b5002a';
 const BG  = 'rgba(139,0,32,0.12)';
 const BOR = 'rgba(139,0,32,0.28)';
-
-const APPS = [
-  { id:1, company:'Google',    role:'SDE Intern',        status:'Offer',       date:'2026-03-24' },
-  { id:2, company:'Microsoft', role:'Frontend Engineer', status:'Interview',   date:'2026-03-20' },
-  { id:3, company:'Amazon',    role:'Data Analyst',      status:'Shortlisted', date:'2026-03-26' },
-  { id:4, company:'Meta',      role:'Product Designer',  status:'Rejected',    date:'2026-03-15' },
-  { id:5, company:'Netflix',   role:'Backend Developer', status:'Applied',     date:'2026-03-27' },
-];
 
 const SS = {
   Applied:     { bg:'rgba(139,0,32,0.15)',   color:'#e05a77', border:'rgba(139,0,32,0.4)' },
@@ -22,25 +18,60 @@ const SS = {
   Rejected:    { bg:'rgba(60,60,60,0.2)',    color:'#888',    border:'rgba(100,100,100,0.3)' },
 };
 
-const STATS = [
-  { label:'Total Applied', value:5, accent:B },
-  { label:'Shortlisted',   value:1, accent:'#888' },
-  { label:'Interviews',    value:1, accent:'#b8860b' },
-  { label:'Offers',        value:1, accent:'#166534' },
-  { label:'Rejected',      value:1, accent:'#333' },
-];
-
 const card = { background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 };
 const inp  = { background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:8, padding:'9px 14px', color:'#e8e8e8', fontSize:13.5, fontFamily:'Inter,sans-serif', outline:'none', width:'100%' };
 
 const Dashboard = () => {
+  const { showToast } = useToast();
+  const [apps, setApps] = useState([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const filtered = APPS.filter(a =>
-    (filter === 'All' || a.status === filter) &&
-    a.company.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const res = await axios.get('/api/applications');
+        setApps(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this application?')) {
+      try {
+        await axios.delete(`/api/applications/${id}`);
+        setApps(apps.filter(app => app._id !== id));
+        showToast('Application deleted');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting application', 'error');
+      }
+    }
+  };
+
+  const filtered = apps.filter(a => {
+    const matchStatus = filter === 'All' || a.status === filter;
+    const matchSearch = a.company.toLowerCase().includes(search.toLowerCase());
+    const matchDate = dateFilter ? new Date(a.dateApplied).toISOString().split('T')[0] === dateFilter : true;
+    return matchStatus && matchSearch && matchDate;
+  });
+
+  const STATS = [
+    { label:'Total Applied', value:apps.length, accent:B },
+    { label:'Shortlisted',   value:apps.filter(a=>a.status==='Shortlisted').length, accent:'#888' },
+    { label:'Interviews',    value:apps.filter(a=>a.status==='Interview').length, accent:'#b8860b' },
+    { label:'Offers',        value:apps.filter(a=>a.status==='Offer').length, accent:'#166534' },
+    { label:'Rejected',      value:apps.filter(a=>a.status==='Rejected').length, accent:'#333' },
+  ];
+
+  const statusOptions = ['All', ...Object.keys(SS)];
 
   return (
     <div style={{ padding:'32px 40px', animation:'fadeIn 0.35s ease' }}>
@@ -75,21 +106,34 @@ const Dashboard = () => {
       {/* Filter */}
       <div style={{ ...card, padding:'13px 16px', marginBottom:18, display:'flex', gap:12, alignItems:'center' }}>
         <input style={{ ...inp, maxWidth:260 }} placeholder="Search company..." value={search} onChange={e=>setSearch(e.target.value)} />
-        <select style={{ ...inp, maxWidth:165, cursor:'pointer' }} value={filter} onChange={e=>setFilter(e.target.value)}>
-          <option value="All" style={{ background:'#0f0f0f' }}>All Statuses</option>
-          {Object.keys(SS).map(k=><option key={k} value={k} style={{ background:'#0f0f0f' }}>{k}</option>)}
-        </select>
-        <input type="date" style={{ ...inp, maxWidth:165, colorScheme:'dark' }} />
+        
+        <div style={{ maxWidth: 180, width:'100%' }}>
+          <Dropdown options={statusOptions} value={filter} onChange={setFilter} placeholder="All Statuses" />
+        </div>
+
+        <div style={{ maxWidth: 165, width:'100%' }}>
+          <DatePicker value={dateFilter} onChange={setDateFilter} placeholder="Applied Date" clearable />
+        </div>
         <span style={{ marginLeft:'auto', fontSize:12, color:'#444' }}>{filtered.length} result{filtered.length!==1?'s':''}</span>
       </div>
 
       {/* Table */}
-      <div style={{ ...card, overflow:'hidden' }}>
-        {filtered.length === 0 ? (
+      <div style={{ ...card, overflow:'hidden', position:'relative', minHeight: loading ? 200 : 'auto' }}>
+        {loading ? (
+          <div style={{ position:'absolute', top:0, left:0, right:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#888' }}>
+            <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid rgba(139,0,32,0.2)', borderTopColor:B, animation:'spin 0.8s linear infinite' }} />
+          </div>
+        ) : apps.length === 0 ? (
           <div style={{ textAlign:'center', padding:'56px 24px', color:'#444' }}>
             <div style={{ fontSize:32, marginBottom:12, color:'#2a2a2a' }}>—</div>
-            <p style={{ marginBottom:16 }}>No applications match your filter.</p>
+            <p style={{ marginBottom:16 }}>You haven't added any applications yet.</p>
             <Link to="/add" style={{ display:'inline-block', padding:'8px 20px', borderRadius:8, background:`linear-gradient(135deg,${B},${BL})`, color:'#fff', textDecoration:'none', fontSize:13, fontWeight:600 }}>Add Application</Link>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'56px 24px', color:'#444' }}>
+            <div style={{ fontSize:32, marginBottom:12, color:'#2a2a2a' }}>—</div>
+            <p style={{ marginBottom:16 }}>No applications match your filters.</p>
+            <button onClick={() => { setSearch(''); setFilter('All'); setDateFilter(''); }} style={{ display:'inline-block', padding:'8px 20px', borderRadius:8, background:'rgba(255,255,255,0.05)', color:'#fff', border:'1px solid rgba(255,255,255,0.1)', cursor:'pointer', fontSize:13, fontWeight:600 }}>Clear Filters</button>
           </div>
         ) : (
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -104,7 +148,7 @@ const Dashboard = () => {
               {filtered.map((app,i) => {
                 const s = SS[app.status] || {};
                 return (
-                  <tr key={app.id}
+                  <tr key={app._id}
                     style={{ borderBottom: i<filtered.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none', transition:'background 0.1s' }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.02)'}
                     onMouseLeave={e=>e.currentTarget.style.background='transparent'}
@@ -122,12 +166,12 @@ const Dashboard = () => {
                       <span style={{ display:'inline-block', padding:'3px 11px', borderRadius:99, fontSize:11, fontWeight:700, background:s.bg, color:s.color, border:`1px solid ${s.border}` }}>{app.status}</span>
                     </td>
                     <td style={{ padding:'14px 20px', color:'#444', fontSize:13 }}>
-                      {new Date(app.date).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}
+                      {new Date(app.dateApplied).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}
                     </td>
                     <td style={{ padding:'14px 20px' }}>
                       <div style={{ display:'flex', gap:8 }}>
-                        <Link to={`/applications/${app.id}`} style={{ padding:'5px 13px', borderRadius:7, fontSize:12, fontWeight:500, background:BG, color:'#d06070', border:`1px solid ${BOR}`, textDecoration:'none' }}>View</Link>
-                        <button style={{ padding:'5px 13px', borderRadius:7, fontSize:12, fontWeight:500, background:'rgba(255,255,255,0.04)', color:'#555', border:'1px solid rgba(255,255,255,0.07)', cursor:'pointer' }}>Delete</button>
+                        <Link to={`/applications/${app._id}`} style={{ padding:'5px 13px', borderRadius:7, fontSize:12, fontWeight:500, background:BG, color:'#d06070', border:`1px solid ${BOR}`, textDecoration:'none' }}>View</Link>
+                        <button onClick={() => handleDelete(app._id)} style={{ padding:'5px 13px', borderRadius:7, fontSize:12, fontWeight:500, background:'rgba(255,255,255,0.04)', color:'#555', border:'1px solid rgba(255,255,255,0.07)', cursor:'pointer' }}>Delete</button>
                       </div>
                     </td>
                   </tr>

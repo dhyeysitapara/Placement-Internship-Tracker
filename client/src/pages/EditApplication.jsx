@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import Dropdown from '../components/Dropdown';
 import DatePicker from '../components/DatePicker';
@@ -15,24 +15,52 @@ const label = { display:'block', marginBottom:7, fontSize:11, fontWeight:700, co
 const STATUS_OPTIONS = ['Applied','Shortlisted','Interview','Offer','Rejected'];
 const ROUND_TYPES = ['Online Assessment','Technical Round','Coding Round','HR Round','Managerial Round','Group Discussion','Case Study','System Design','Culture Fit'];
 
-const AddApplication = () => {
+const EditApplication = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [form, setForm] = useState({
     company:'', role:'', status:'Applied',
-    dateApplied: new Date().toISOString().split('T')[0],
-    jobLink:'', notes:'',
+    dateApplied: '', jobLink:'', notes:'',
     interviewRounds: []
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+
+  useEffect(() => {
+    const fetchApp = async () => {
+      try {
+        const res = await axios.get(`/api/applications/${id}`);
+        const data = res.data;
+        setForm({
+          company: data.company || '',
+          role: data.role || '',
+          status: data.status || 'Applied',
+          dateApplied: data.dateApplied ? new Date(data.dateApplied).toISOString().split('T')[0] : '',
+          jobLink: data.jobLink || '',
+          notes: data.notes || '',
+          interviewRounds: (data.interviewRounds || []).map(r => ({
+            roundType: r.roundType || 'Technical Round',
+            date: r.date ? new Date(r.date).toISOString().split('T')[0] : '',
+            notes: r.notes || '',
+          }))
+        });
+      } catch (err) {
+        console.error(err);
+        showToast('Could not fetch application data', 'error');
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchApp();
+  }, [id]);
 
   const onChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' });
   };
 
-  // Round handlers
   const addRound = () => {
     setForm({ ...form, interviewRounds: [...form.interviewRounds, { roundType: 'Technical Round', date: '', notes: '' }] });
   };
@@ -63,10 +91,9 @@ const AddApplication = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const payload = { ...form };
-      await axios.post('/api/applications', payload);
-      showToast('Application added successfully!');
-      navigate('/');
+      await axios.put(`/api/applications/${id}`, form);
+      showToast('Application updated successfully!');
+      navigate(`/applications/${id}`);
     } catch (err) {
       console.error(err);
       showToast('Error saving application', 'error');
@@ -75,11 +102,19 @@ const AddApplication = () => {
     }
   };
 
+  if (fetching) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'50vh', color:'#888' }}>
+        <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid rgba(139,0,32,0.2)', borderTopColor:B, animation:'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding:'32px 40px', animation:'fadeIn 0.35s ease', maxWidth:860, margin:'0 auto' }}>
       <div style={{ marginBottom:28 }}>
         <p style={{ fontSize:11, color:'#444', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:5 }}>Applications</p>
-        <h1 style={{ fontFamily:'Poppins,sans-serif', fontSize:26, fontWeight:700, color:'#fff' }}>Add New Application</h1>
+        <h1 style={{ fontFamily:'Poppins,sans-serif', fontSize:26, fontWeight:700, color:'#fff' }}>Edit Application</h1>
       </div>
 
       <div style={{ background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, overflow:'hidden' }}>
@@ -177,11 +212,11 @@ const AddApplication = () => {
           </div>
 
           <div style={{ display:'flex', gap:12, justifyContent:'flex-end', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:22 }}>
-            <button type="button" onClick={() => navigate('/')} style={{ padding:'10px 24px', borderRadius:8, fontSize:14, fontWeight:500, color:'#555', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}>
+            <button type="button" onClick={() => navigate(`/applications/${id}`)} style={{ padding:'10px 24px', borderRadius:8, fontSize:14, fontWeight:500, color:'#555', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}>
               Cancel
             </button>
             <button type="submit" disabled={loading} style={{ padding:'10px 28px', borderRadius:8, fontSize:14, fontWeight:600, color:'#fff', background:loading? '#555' : `linear-gradient(135deg,${B},${BL})`, border:'none', cursor:loading?'not-allowed':'pointer', boxShadow:`0 4px 14px rgba(139,0,32,0.4)` }}>
-              {loading ? 'Saving...' : 'Save Application'}
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -190,4 +225,4 @@ const AddApplication = () => {
   );
 };
 
-export default AddApplication;
+export default EditApplication;
